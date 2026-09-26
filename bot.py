@@ -21,7 +21,7 @@ VALID_SCOPES = {"category", "merchant", "customer", "trigger"}
 api_key = os.environ.get("GOOGLE_API_KEY")
 if api_key and genai is not None:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-flash-latest")
 else:
     print("WARNING: GOOGLE_API_KEY environment variable not set. Using built-in fallback logic.")
     model = None
@@ -48,7 +48,7 @@ async def metadata():
     return {
         "team_name": "Antigravity Vera",
         "team_members": ["AI Assistant"],
-        "model": "gemini-1.5-flash",
+        "model": "gemini-flash-latest",
         "approach": "Context-aware WhatsApp composer with deterministic fallback heuristics",
         "contact_email": "hello@example.com",
         "version": "1.1.0",
@@ -75,7 +75,13 @@ async def push_context(body: CtxBody):
 
     key = (body.scope, body.context_id)
     cur = contexts.get(key)
-    if cur and cur["version"] >= body.version:
+    if cur and cur["version"] == body.version:
+        return {
+            "accepted": True,
+            "ack_id": f"ack_{body.context_id}_v{body.version}",
+            "stored_at": datetime.utcnow().isoformat() + "Z",
+        }
+    if cur and cur["version"] > body.version:
         return {"accepted": False, "reason": "stale_version", "current_version": cur["version"]}
 
     contexts[key] = {"version": body.version, "payload": body.payload}
